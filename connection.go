@@ -15,6 +15,7 @@
 package ocagent
 
 import (
+	"log"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -25,8 +26,12 @@ const (
 	sConnected
 )
 
-func (ae *Exporter) setStateDisconnected() {
+func (ae *Exporter) setStateDisconnected(err error) {
+	log.Printf("setStateDisconnected()")
 	atomic.StoreInt32(&ae.connectionState, sDisconnected)
+	ae.mu.Lock()
+	ae.connectErr = err
+	ae.mu.Unlock()
 	select {
 	case ae.disconnectedCh <- true:
 	default:
@@ -35,6 +40,9 @@ func (ae *Exporter) setStateDisconnected() {
 
 func (ae *Exporter) setStateConnected() {
 	atomic.StoreInt32(&ae.connectionState, sConnected)
+	ae.mu.Lock()
+	ae.connectErr = nil
+	ae.mu.Unlock()
 }
 
 func (ae *Exporter) connected() bool {
@@ -66,30 +74,38 @@ func (ae *Exporter) indefiniteBackgroundConnection() error {
 		// 1. If we've stopped, return entirely
 		// 2. Otherwise block until we are disconnected, and
 		//    then retry connecting
+		log.Printf("at select")
 		select {
 		case <-ae.stopCh:
+			log.Printf("<-ae.stopCh")
 			return errStopped
 
 		case <-ae.disconnectedCh:
+			log.Printf("<-ae.disconnectedCh")
 			// Normal scenario that we'll wait for
 		}
 
 		if err := ae.connect(); err == nil {
+			log.Printf("ae.connect() = %v", err)
 			ae.setStateConnected()
 		} else {
-			ae.setStateDisconnected()
+			log.Printf("ae.connect() = %v", err)
+			ae.setStateDisconnected(err)
 		}
 
 		// Apply some jitter to avoid lockstep retrials of other
 		// agent-exporters. Lockstep retrials could result in an
 		// innocent DDOS, by clogging the machine's resources and network.
 		jitter := time.Duration(rng.Int63n(maxJitter))
+		log.Printf("waiting for re-attempt: %v", time.Duration(connReattemptPeriod+jitter))
 		<-time.After(connReattemptPeriod + jitter)
 	}
 }
 
 func (ae *Exporter) connect() error {
+	log.Printf("before ae.dialToAgent()")
 	cc, err := ae.dialToAgent()
+	log.Printf("after ae.dialToAgent(): %v", err)
 	if err != nil {
 		return err
 	}

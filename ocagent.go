@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"sync"
 	"time"
 
@@ -57,6 +59,7 @@ type Exporter struct {
 	mu sync.RWMutex
 	// senderMu protects the concurrent unsafe traceExporter client
 	senderMu           sync.RWMutex
+	recvMu             sync.RWMutex
 	started            bool
 	stopped            bool
 	agentAddress       string
@@ -70,6 +73,7 @@ type Exporter struct {
 	resource           *resourcepb.Resource
 	compressor         string
 	headers            map[string]string
+	connectErr         error
 
 	startOnce      sync.Once
 	stopCh         chan bool
@@ -147,14 +151,20 @@ func (ae *Exporter) Start() error {
 	var err = errAlreadyStarted
 	ae.startOnce.Do(func() {
 		ae.mu.Lock()
-		defer ae.mu.Unlock()
-
 		ae.started = true
 		ae.disconnectedCh = make(chan bool, 1)
 		ae.stopCh = make(chan bool)
 		ae.backgroundConnectionDoneCh = make(chan bool)
+		ae.mu.Unlock()
 
-		ae.setStateDisconnected()
+		if err := ae.connect(); err == nil {
+			log.Printf("Start() ae.connect() = %v", err)
+			ae.setStateConnected()
+		} else {
+			log.Printf("Start() ae.connect() = %v", err)
+			ae.setStateDisconnected(err)
+		}
+		// ae.setStateDisconnected()
 		go ae.indefiniteBackgroundConnection()
 
 		err = nil
@@ -176,6 +186,7 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 	nodeInfo := ae.nodeInfo
 	ae.mu.RUnlock()
 
+	log.Printf("enableConnectionStreams() started: %v", started)
 	if !started {
 		return errNotStarted
 	}
@@ -188,10 +199,13 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 	ae.grpcClientConn = cc
 	ae.mu.Unlock()
 
+	log.Printf("createTraceServiceConnection() starting")
 	if err := ae.createTraceServiceConnection(ae.grpcClientConn, nodeInfo); err != nil {
+		log.Printf("createTraceServiceConnection(): %v", err)
 		return err
 	}
 
+	log.Printf("createMetricsServiceConnection() starting")
 	return ae.createMetricsServiceConnection(ae.grpcClientConn, nodeInfo)
 }
 
@@ -212,6 +226,7 @@ func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *comm
 		Resource: ae.resource,
 	}
 	if err := traceExporter.Send(firstTraceMessage); err != nil {
+		log.Printf("traceExporter.Send(firstTraceMessage) = %v", err)
 		return fmt.Errorf("Exporter.Start:: Failed to initiate the Config service: %v", err)
 	}
 
@@ -278,6 +293,8 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 	if len(ae.headers) > 0 {
 		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
 	}
+
+	// dialOpts = append(dialOpts, grpc.WithBlock())
 	return grpc.DialContext(ctx, addr, dialOpts...)
 }
 
@@ -372,15 +389,32 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 
 	default:
 		if !ae.connected() {
-			return errNoConnection
+			return fmt.Errorf("no active connection (dropping data): %v", ae.connectErr)
 		}
 
 		ae.senderMu.Lock()
 		err := ae.traceExporter.Send(batch)
 		ae.senderMu.Unlock()
 		if err != nil {
-			ae.setStateDisconnected()
-			return err
+			streamClosed := false
+			if err == io.EOF {
+				log.Printf("ae.traceExporter.Send(batch) = io.EOF")
+				ae.recvMu.Lock()
+				for _, err = ae.traceExporter.Recv(); err == nil; _, err = ae.traceExporter.Recv() {
+					// Loop until actual error (or io.EOF) is received.
+				}
+				ae.recvMu.Unlock()
+				if err == io.EOF {
+					// Not an error just that the stream was closed.
+					streamClosed = true
+				}
+			}
+
+			log.Printf("ae.traceExporter.Send(batch) = %v", err)
+			ae.setStateDisconnected(err)
+			if !streamClosed {
+				return err
+			}
 		}
 		return nil
 	}
@@ -426,7 +460,8 @@ func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
 		})
 		ae.senderMu.Unlock()
 		if err != nil {
-			ae.setStateDisconnected()
+			log.Printf("ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{...}) = %v", err)
+			ae.setStateDisconnected(err)
 		}
 	}
 }
@@ -470,7 +505,8 @@ func (ae *Exporter) uploadViewData(vdl []*view.Data) {
 			// or better letting users of the exporter configure it.
 		})
 		if err != nil {
-			ae.setStateDisconnected()
+			log.Printf("setStateDisconnected() on metrics: %v", err)
+			ae.setStateDisconnected(err)
 		}
 	}
 }
