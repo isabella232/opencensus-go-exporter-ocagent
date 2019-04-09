@@ -279,6 +279,9 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 		dialOpts = append(dialOpts, ae.grpcDialOptions...)
 	}
 	dialOpts = append(dialOpts, grpc.WithStatsHandler(&ocgrpc.ClientHandler{}))
+	if len(ae.grpcDialOptions) != 0 {
+		dialOpts = append(dialOpts, ae.grpcDialOptions...)
+	}
 
 	ctx := context.Background()
 	if len(ae.headers) > 0 {
