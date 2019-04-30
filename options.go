@@ -142,3 +142,16 @@ func WithGRPCDialOption(opts ...grpc.DialOption) ExporterOption {
 func (opts grpcDialOptions) withExporter(e *Exporter) {
 	e.grpcDialOptions = opts
 }
+
+type grpcCallOptions []grpc.CallOption
+
+var _ ExporterOption = (*grpcCallOptions)(nil)
+
+// WithGRPCCallOption opens support to any grpc.CallOption to be used.
+func WithGRPCCallOption(opts ...grpc.CallOption) ExporterOption {
+	return grpcCallOptions(opts)
+}
+
+func (opts grpcCallOptions) withExporter(e *Exporter) {
+	e.grpcCallOptions = opts
+}

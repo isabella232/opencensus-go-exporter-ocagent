@@ -87,6 +87,7 @@ type Exporter struct {
 	clientTransportCredentials credentials.TransportCredentials
 
 	grpcDialOptions []grpc.DialOption
+	grpcCallOptions []grpc.CallOption
 }
 
 func NewExporter(opts ...ExporterOption) (*Exporter, error) {
@@ -268,7 +269,10 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
 	if ae.compressor != "" {
-		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(grpc.UseCompressor(ae.compressor)))
+		ae.grpcCallOptions = append(ae.grpcCallOptions, grpc.UseCompressor(ae.compressor))
+	}
+	if len(ae.grpcCallOptions) > 0 {
+		dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(ae.grpcCallOptions...))
 	}
 	if len(ae.grpcDialOptions) != 0 {
 		dialOpts = append(dialOpts, ae.grpcDialOptions...)
