@@ -25,8 +25,10 @@ import (
 
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/resource"
@@ -201,7 +203,11 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 		return err
 	}
 
-	return ae.createMetricsServiceConnection(ae.grpcClientConn, nodeInfo)
+	// Currently this ends up leaking on receiver side from oc-service if
+	// there is no metric receiver actually running. This is a temporary
+	// workaround, of course it can't be merged as it is.
+	// return ae.createMetricsServiceConnection(ae.grpcClientConn, nodeInfo)
+	return nil
 }
 
 func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *commonpb.Node) error {
@@ -404,6 +410,41 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 				ae.recvMu.Unlock()
 			}
 
+			if status.Code(err) == codes.ResourceExhausted {
+				// Assumes that the default msg size (4MiB) was not reduced on the receiving side.
+				if batch.XXX_Size() > (4*1024*1024) && len(batch.Spans) > 2 {
+					// Slice and try again
+					b := &agenttracepb.ExportTraceServiceRequest{
+						Node:     batch.Node,
+						Resource: batch.Resource,
+					}
+					// Known-issue: it is possible to get partial success and failure for the second half.
+					// In this case the caller will receive failure for the full batch and may retry it later
+					// causing same spans that succeeded on first half to be submit again. The alternative is for
+					// the caller to check the size and do its own slicing but that doesn't take into account the
+					// compressed size so it can be performing eager slicing.
+					allSpans := batch.Spans[:]
+					mid := len(allSpans) / 2
+					b.Spans = allSpans[:mid]
+					if err = ae.connect(); err != nil {
+						ae.setStateDisconnected(err)
+						return err
+					}
+					err = ae.ExportTraceServiceRequest(b)
+					if err != nil {
+						ae.setStateDisconnected(err)
+						return err
+					}
+					b.Spans = allSpans[mid:]
+					err = ae.ExportTraceServiceRequest(b)
+					if err != nil {
+						ae.setStateDisconnected(err)
+						return err
+					}
+					return nil
+				}
+			}
+
 			ae.setStateDisconnected(err)
 			if err != io.EOF {
 				return err
@@ -434,28 +475,14 @@ func ocSpanDataToPbSpans(sdl []*trace.SpanData) []*tracepb.Span {
 }
 
 func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
-	select {
-	case <-ae.stopCh:
+	protoSpans := ocSpanDataToPbSpans(sdl)
+	if len(protoSpans) == 0 {
 		return
-
-	default:
-		if !ae.connected() {
-			return
-		}
-
-		protoSpans := ocSpanDataToPbSpans(sdl)
-		if len(protoSpans) == 0 {
-			return
-		}
-		ae.senderMu.Lock()
-		err := ae.traceExporter.Send(&agenttracepb.ExportTraceServiceRequest{
-			Spans: protoSpans,
-		})
-		ae.senderMu.Unlock()
-		if err != nil {
-			ae.setStateDisconnected(err)
-		}
 	}
+	msg := &agenttracepb.ExportTraceServiceRequest{
+		Spans: protoSpans,
+	}
+	ae.ExportTraceServiceRequest(msg)
 }
 
 func ocViewDataToPbMetrics(vdl []*view.Data) []*metricspb.Metric {
