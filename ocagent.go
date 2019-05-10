@@ -65,6 +65,9 @@ type Exporter struct {
 	agentAddress       string
 	serviceName        string
 	canDialInsecure    bool
+	useUnaryBatchExporter bool
+	unaryExportTimeout    time.Duration
+	traceSvcClient        agenttracepb.TraceServiceClient // figure out if this is still needed
 	traceExporter      agenttracepb.TraceService_ExportClient
 	metricsExporter    agentmetricspb.MetricsService_ExportClient
 	nodeInfo           *commonpb.Node
@@ -75,7 +78,6 @@ type Exporter struct {
 	compressor         string
 	headers            map[string]string
 	lastConnectErrPtr  unsafe.Pointer
-
 	startOnce      sync.Once
 	stopCh         chan bool
 	disconnectedCh chan bool
@@ -211,17 +213,13 @@ func (ae *Exporter) enableConnectionStreams(cc *grpc.ClientConn) error {
 	if err := ae.createTraceServiceConnection(ae.grpcClientConn, nodeInfo); err != nil {
 		return err
 	}
-
 	return ae.createMetricsServiceConnection(ae.grpcClientConn, nodeInfo)
 }
 
 func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *commonpb.Node) error {
 	// Initiate the trace service by sending over node identifier info.
 	traceSvcClient := agenttracepb.NewTraceServiceClient(cc)
-	ctx := context.Background()
-	if len(ae.headers) > 0 {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
-	}
+	ctx := ae.newGRPCContext()
 	traceExporter, err := traceSvcClient.Export(ctx)
 	if err != nil {
 		return fmt.Errorf("Exporter.Start:: TraceServiceClient: %v", err)
@@ -236,6 +234,7 @@ func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *comm
 	}
 
 	ae.mu.Lock()
+	ae.traceSvcClient = traceSvcClient
 	ae.traceExporter = traceExporter
 	ae.mu.Unlock()
 
@@ -252,7 +251,6 @@ func (ae *Exporter) createTraceServiceConnection(cc *grpc.ClientConn, node *comm
 	// In the background, handle trace configurations that are beamed down
 	// by the agent, but also reply to it with the applied configuration.
 	go ae.handleConfigStreaming(configStream)
-
 	return nil
 }
 
@@ -295,10 +293,7 @@ func (ae *Exporter) dialToAgent() (*grpc.ClientConn, error) {
 		dialOpts = append(dialOpts, ae.grpcDialOptions...)
 	}
 
-	ctx := context.Background()
-	if len(ae.headers) > 0 {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
-	}
+	ctx := ae.newGRPCContext()
 	return grpc.DialContext(ctx, addr, dialOpts...)
 }
 
@@ -375,6 +370,9 @@ func (ae *Exporter) Stop() error {
 	return err
 }
 
+// ExportSpan exports a single span to the configured destination.
+// This is usually used by the client libraries to export to the local
+// OC agent
 func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	if sd == nil {
 		return
@@ -382,7 +380,47 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 	_ = ae.traceBundler.Add(sd, 1)
 }
 
+// ExportTraceServiceRequest exports a span batch using streaming or unary gRPC depending on
+// whether `WithUnaryTraceExporter()` was used or not.
 func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceServiceRequest) error {
+	if ae.useUnaryBatchExporter {
+		return ae.exportTraceServiceRequestUnary(batch)
+	}
+	return ae.exportTraceServiceRequestStream(batch)
+}
+
+func (ae *Exporter) exportTraceServiceRequestUnary(req *agenttracepb.ExportTraceServiceRequest) error {
+	if req == nil || len(req.Spans) == 0 {
+		return nil
+	}
+
+	select {
+	case <-ae.stopCh:
+		return errStopped
+
+	default:
+		if lastConnectErr := ae.lastConnectError(); lastConnectErr != nil {
+			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", lastConnectErr)
+		}
+		if req.Node == nil {
+			req.Node = ae.nodeInfo
+		}
+		ctx := ae.newGRPCContext()
+		if ae.unaryExportTimeout > 0 {
+			var cancel func()
+			ctx, cancel = context.WithDeadline(ctx, time.Now().Add(ae.unaryExportTimeout))
+			defer cancel()
+		}
+		_, err := ae.traceSvcClient.ExportOne(ctx, req)
+
+		if err != nil && err == io.EOF {
+			ae.setStateDisconnected(err)
+		}
+		return err
+	}
+}
+
+func (ae *Exporter) exportTraceServiceRequestStream(batch *agenttracepb.ExportTraceServiceRequest) error {
 	if batch == nil || len(batch.Spans) == 0 {
 		return nil
 	}
@@ -485,6 +523,14 @@ func ocSpanDataToPbSpans(sdl []*trace.SpanData) []*tracepb.Span {
 		}
 	}
 	return protoSpans
+}
+
+func (ae *Exporter) newGRPCContext() context.Context {
+	ctx := context.Background()
+	if len(ae.headers) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, metadata.New(ae.headers))
+	}
+	return ctx
 }
 
 func (ae *Exporter) uploadTraces(sdl []*trace.SpanData) {
