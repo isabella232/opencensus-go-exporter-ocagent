@@ -18,10 +18,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+
+	ptypes "github.com/gogo/protobuf/types"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
 )
@@ -181,15 +182,15 @@ func viewDataToTimeseries(vd *view.Data) ([]*metricspb.TimeSeries, error) {
 	return timeseries, nil
 }
 
-func timeToProtoTimestamp(t time.Time) *timestamp.Timestamp {
+func timeToProtoTimestamp(t time.Time) *ptypes.Timestamp {
 	unixNano := t.UnixNano()
-	return &timestamp.Timestamp{
+	return &ptypes.Timestamp{
 		Seconds: int64(unixNano / 1e9),
 		Nanos:   int32(unixNano % 1e9),
 	}
 }
 
-func rowToPoint(v *view.View, row *view.Row, endTimestamp *timestamp.Timestamp, mType measureType) *metricspb.Point {
+func rowToPoint(v *view.View, row *view.Row, endTimestamp *ptypes.Timestamp, mType measureType) *metricspb.Point {
 	pt := &metricspb.Point{
 		Timestamp: endTimestamp,
 	}
