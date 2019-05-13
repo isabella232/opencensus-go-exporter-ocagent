@@ -25,8 +25,7 @@ import (
 	"go.opencensus.io/tag"
 
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
+	ptypes "github.com/gogo/protobuf/types"
 )
 
 var (
@@ -124,7 +123,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -134,7 +133,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -159,7 +158,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -169,7 +168,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -194,7 +193,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -204,7 +203,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -292,7 +291,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -303,7 +302,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -328,7 +327,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -339,7 +338,7 @@ func TestViewDataToMetrics_Distribution(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -421,7 +420,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -431,7 +430,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -440,7 +439,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -450,7 +449,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -535,7 +534,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -545,7 +544,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -570,7 +569,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -580,7 +579,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -605,7 +604,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -615,7 +614,7 @@ func TestViewDataToMetrics_LastValue(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -699,7 +698,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -709,7 +708,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -718,7 +717,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -728,7 +727,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -786,7 +785,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -797,7 +796,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -806,7 +805,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -817,7 +816,7 @@ func TestViewDataToMetrics_Count(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -885,7 +884,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -895,7 +894,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -904,7 +903,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -914,7 +913,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -972,7 +971,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -983,7 +982,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -992,7 +991,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 					},
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -1003,7 +1002,7 @@ func TestViewDataToMetrics_Sum(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -1062,7 +1061,7 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -1073,7 +1072,7 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},
@@ -1122,7 +1121,7 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 				},
 				Timeseries: []*metricspb.TimeSeries{
 					{
-						StartTimestamp: &timestamp.Timestamp{
+						StartTimestamp: &ptypes.Timestamp{
 							Seconds: 1543160298,
 							Nanos:   997,
 						},
@@ -1133,7 +1132,7 @@ func TestViewDataToMetrics_MissingVsEmptyLabelValues(t *testing.T) {
 						},
 						Points: []*metricspb.Point{
 							{
-								Timestamp: &timestamp.Timestamp{
+								Timestamp: &ptypes.Timestamp{
 									Seconds: 1543160298,
 									Nanos:   100000997,
 								},

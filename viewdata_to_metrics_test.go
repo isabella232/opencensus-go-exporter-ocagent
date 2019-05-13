@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc"
 
 	"go.opencensus.io/stats"
@@ -31,6 +30,7 @@ import (
 
 	agentmetricspb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/metrics/v1"
 	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	ptypes "github.com/gogo/protobuf/types"
 )
 
 type metricsAgent struct {
@@ -117,14 +117,14 @@ func TestExportMetrics_conversionFromViewData(t *testing.T) {
 					},
 					Timeseries: []*metricspb.TimeSeries{
 						{
-							StartTimestamp: &timestamp.Timestamp{
+							StartTimestamp: &ptypes.Timestamp{
 								Seconds: 1543160298,
 								Nanos:   997,
 							},
 							LabelValues: nil,
 							Points: []*metricspb.Point{
 								{
-									Timestamp: &timestamp.Timestamp{
+									Timestamp: &ptypes.Timestamp{
 										Seconds: 1543160298,
 										Nanos:   100000997,
 									},

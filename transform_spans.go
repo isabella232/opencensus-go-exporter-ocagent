@@ -22,7 +22,7 @@ import (
 	"go.opencensus.io/trace/tracestate"
 
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	ptypes "github.com/gogo/protobuf/types"
 )
 
 const (
@@ -208,9 +208,9 @@ func clip32(x int) int32 {
 	return int32(x)
 }
 
-func timeToTimestamp(t time.Time) *timestamp.Timestamp {
+func timeToTimestamp(t time.Time) *ptypes.Timestamp {
 	nanoTime := t.UnixNano()
-	return &timestamp.Timestamp{
+	return &ptypes.Timestamp{
 		Seconds: nanoTime / 1e9,
 		Nanos:   int32(nanoTime % 1e9),
 	}
