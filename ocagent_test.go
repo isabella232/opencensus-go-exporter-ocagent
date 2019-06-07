@@ -232,13 +232,13 @@ func TestNewExporter_unary(t *testing.T) {
 	ma := runMockAgent(t)
 	defer ma.stop()
 
-	serviceName := "endToEnd_test"
+	serviceName := "endToEndUnary_test"
 	exp, err := ocagent.NewExporter(
 		ocagent.WithInsecure(),
 		ocagent.WithAddress(ma.address),
 		ocagent.WithReconnectionPeriod(50*time.Millisecond),
 		ocagent.WithServiceName(serviceName),
-		ocagent.WithUnaryBatchExporter(),
+		ocagent.WithUnaryBatchExporter(ocagent.UnaryExporterParams{}),
 	)
 	if err != nil {
 		t.Fatalf("Failed to create a new agent exporter: %v", err)
@@ -305,6 +305,60 @@ func TestNewExporter_unary(t *testing.T) {
 		} else if g, w := node.ServiceInfo, wantServiceInfo; !sameServiceInfo(g, w) {
 			t.Errorf("ServiceInfo mismatch\nGot  %#v\nWant %#v", g, w)
 		}
+	}
+}
+
+func TestNewExporter_unary_timeout(t *testing.T) {
+	ma := runMockAgent(t)
+	defer ma.stop()
+
+	serviceName := "endToEndUnary_test"
+	exp, err := ocagent.NewExporter(
+		ocagent.WithInsecure(),
+		ocagent.WithAddress(ma.address),
+		ocagent.WithReconnectionPeriod(50*time.Millisecond),
+		ocagent.WithServiceName(serviceName),
+		ocagent.WithUnaryBatchExporter(ocagent.UnaryExporterParams{
+			Timeout: time.Nanosecond * 1,
+		}),
+	)
+	if err != nil {
+		t.Fatalf("Failed to create a new agent exporter: %v", err)
+	}
+	defer exp.Stop()
+
+	// Once we've register the exporter, we can then send over a bunch of spans.
+	trace.RegisterExporter(exp)
+	defer trace.UnregisterExporter(exp)
+
+	numSpans := 4
+	batchedSpans := make([]*tracepb.Span, 0, numSpans)
+	for i := 0; i < numSpans; i++ {
+		name := &tracepb.TruncatableString{Value: "AlwaysSample"}
+		batchedSpans = append(batchedSpans, &tracepb.Span{Name: name})
+	}
+	err = exp.ExportTraceServiceRequest(&agenttracepb.ExportTraceServiceRequest{Spans: batchedSpans})
+	if err == nil {
+		t.Error("must raise deadline exceeded error")
+	}
+
+	wantErr := "rpc error: code = DeadlineExceeded desc = context deadline exceeded"
+	if err.Error() != wantErr {
+		t.Errorf("unexpected error found: got %s", err.Error())
+	}
+
+	// Now shutdown the exporter
+	if err := exp.Stop(); err != nil {
+		t.Errorf("Failed to stop the exporter: %v", err)
+	}
+
+	// Shutdown the agent too so that we can begin
+	// verification checks of expected data back.
+	ma.stop()
+
+	spans := ma.getUnarySpans()
+	if g, w := len(spans), 0; g != w {
+		t.Errorf("Spans: got %d want %d", g, w)
 	}
 }
 
