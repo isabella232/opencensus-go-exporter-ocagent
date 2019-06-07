@@ -26,8 +26,36 @@ const (
 	DefaultAgentHost string = "localhost"
 )
 
+var DefaultUnaryExportTimeout time.Duration = 5 * time.Second
+
 type ExporterOption interface {
 	withExporter(e *Exporter)
+}
+
+type UnaryExporterParams struct {
+	Timeout time.Duration
+}
+
+type unaryBatchExporter struct {
+	timeout time.Duration
+}
+
+var _ ExporterOption = (*unaryBatchExporter)(nil)
+
+func (ute *unaryBatchExporter) withExporter(e *Exporter) {
+	e.useUnaryBatchExporter = true
+	e.unaryExportTimeout = ute.timeout
+}
+
+// WithUnaryBatchExporter enables unary rpc to export traces instead of streaming rpc
+// This is only enabled when exporting batches using the ExportTraceServiceRequest().
+// ExportSpan() will still continue to use streaming irrespective of this config option.
+func WithUnaryBatchExporter(p UnaryExporterParams) ExporterOption {
+	t := DefaultUnaryExportTimeout
+	if p.Timeout > 0 {
+		t = p.Timeout
+	}
+	return &unaryBatchExporter{t}
 }
 
 type insecureGrpcConnection int
