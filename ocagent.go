@@ -25,8 +25,10 @@ import (
 
 	"google.golang.org/api/support/bundler"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"go.opencensus.io/plugin/ocgrpc"
 	"go.opencensus.io/resource"
@@ -40,6 +42,8 @@ import (
 	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
 	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
 )
+
+const fourMegabytes = 4 * 1024 * 1024
 
 var startupMu sync.Mutex
 var startTime time.Time
@@ -383,10 +387,55 @@ func (ae *Exporter) ExportSpan(sd *trace.SpanData) {
 // ExportTraceServiceRequest exports a span batch using streaming or unary gRPC depending on
 // whether `WithUnaryTraceExporter()` was used or not.
 func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceServiceRequest) error {
+	var err error
 	if ae.useUnaryBatchExporter {
-		return ae.exportTraceServiceRequestUnary(batch)
+		err = ae.exportTraceServiceRequestUnary(batch)
+	} else {
+		err = ae.exportTraceServiceRequestStream(batch)
 	}
-	return ae.exportTraceServiceRequestStream(batch)
+
+	if err == nil {
+		return nil
+	}
+
+	if status.Code(err) == codes.ResourceExhausted {
+		// Assumes that the default msg size (4MiB) was not reduced on the receiving side.
+		if batch.XXX_Size() > fourMegabytes && len(batch.Spans) > 2 {
+			// Slice and try again
+			b := &agenttracepb.ExportTraceServiceRequest{
+				Node:     batch.Node,
+				Resource: batch.Resource,
+			}
+			// Known-issue: it is possible to get partial success and failure for the second half.
+			// In this case the caller will receive failure for the full batch and may retry it later
+			// causing same spans that succeeded on first half to be submit again. The alternative is for
+			// the caller to check the size and do its own slicing but that doesn't take into account the
+			// compressed size so it can be performing eager slicing.
+			allSpans := batch.Spans[:]
+			mid := len(allSpans) / 2
+			b.Spans = allSpans[:mid]
+			if err = ae.connect(); err != nil {
+				ae.setStateDisconnected(err)
+				return err
+			}
+			err = ae.ExportTraceServiceRequest(b)
+			if err != nil {
+				ae.setStateDisconnected(err)
+				return err
+			}
+			b.Spans = allSpans[mid:]
+			err = ae.ExportTraceServiceRequest(b)
+			if err != nil {
+				ae.setStateDisconnected(err)
+				return err
+			}
+		}
+	}
+	ae.setStateDisconnected(err)
+	if err == io.EOF {
+		return nil
+	}
+	return err
 }
 
 func (ae *Exporter) exportTraceServiceRequestUnary(req *agenttracepb.ExportTraceServiceRequest) error {
@@ -412,10 +461,6 @@ func (ae *Exporter) exportTraceServiceRequestUnary(req *agenttracepb.ExportTrace
 			defer cancel()
 		}
 		_, err := ae.traceSvcClient.ExportOne(ctx, req)
-
-		if err != nil && err == io.EOF {
-			ae.setStateDisconnected(err)
-		}
 		return err
 	}
 }
