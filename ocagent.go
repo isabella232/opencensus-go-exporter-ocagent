@@ -466,7 +466,7 @@ func (ae *Exporter) exportTraceServiceRequestStream(batch *agenttracepb.ExportTr
 
 	default:
 		if lastConnectErr := ae.lastConnectError(); lastConnectErr != nil {
-			return fmt.Errorf("ExportTraceServiceRequest: no active connection, last connection error: %v", lastConnectErr)
+			return lastConnectErr
 		}
 
 		ae.senderMu.Lock()
