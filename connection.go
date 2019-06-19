@@ -15,6 +15,7 @@
 package ocagent
 
 import (
+	"fmt"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -38,6 +39,7 @@ func (ae *Exporter) saveLastConnectError(err error) {
 }
 
 func (ae *Exporter) setStateDisconnected(err error) {
+	err = fmt.Errorf("no active connection, last connection error: %v", err)
 	ae.saveLastConnectError(err)
 	select {
 	case ae.disconnectedCh <- true:
