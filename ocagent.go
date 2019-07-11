@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"sync"
 	"time"
 	"unsafe"
@@ -70,6 +71,7 @@ type Exporter struct {
 	serviceName           string
 	canDialInsecure       bool
 	useUnaryBatchExporter bool
+	closeStreamOnBidi     bool
 	unaryExportTimeout    time.Duration
 	traceSvcClient        agenttracepb.TraceServiceClient
 	traceExporter         agenttracepb.TraceService_ExportClient
@@ -380,8 +382,10 @@ func (ae *Exporter) ExportTraceServiceRequest(batch *agenttracepb.ExportTraceSer
 	var err error
 	if ae.useUnaryBatchExporter {
 		err = ae.exportTraceServiceRequestUnary(batch)
-	} else {
+	} else if !ae.closeStreamOnBidi {
 		err = ae.exportTraceServiceRequestStream(batch)
+	} else {
+		err = ae.exportTraceServiceRequestCloseStream(batch)
 	}
 
 	if err == nil {
@@ -486,6 +490,54 @@ func (ae *Exporter) exportTraceServiceRequestStream(batch *agenttracepb.ExportTr
 					}
 				}
 				ae.recvMu.Unlock()
+			}
+
+			ae.setStateDisconnected(err)
+			if err != io.EOF {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func (ae *Exporter) exportTraceServiceRequestCloseStream(batch *agenttracepb.ExportTraceServiceRequest) error {
+	if batch == nil || len(batch.Spans) == 0 {
+		return nil
+	}
+
+	select {
+	case <-ae.stopCh:
+		return errStopped
+
+	default:
+		if lastConnectErr := ae.lastConnectError(); lastConnectErr != nil {
+			return lastConnectErr
+		}
+
+		ctx := ae.newGRPCContext()
+		ae.mu.RLock()
+		traceExporter, err := ae.traceSvcClient.Export(ctx)
+		ae.mu.RUnlock()
+		if err != nil {
+			return err
+		}
+
+		log.Printf("<<<<<< Closing stream after send >>>>>")
+		defer traceExporter.CloseSend()
+		err = traceExporter.Send(batch)
+		if err != nil {
+			if err == io.EOF {
+				// Perform a .Recv to try to find out why the RPC actually ended.
+				// See:
+				//   * https://github.com/grpc/grpc-go/blob/d389f9fac68eea0dcc49957d0b4cca5b3a0a7171/stream.go#L98-L100
+				//   * https://groups.google.com/forum/#!msg/grpc-io/XcN4hA9HonI/F_UDiejTAwAJ
+				for {
+					_, err = traceExporter.Recv()
+					if err != nil {
+						break
+					}
+				}
 			}
 
 			ae.setStateDisconnected(err)

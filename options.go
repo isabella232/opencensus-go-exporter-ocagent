@@ -58,6 +58,17 @@ func WithUnaryBatchExporter(p UnaryExporterParams) ExporterOption {
 	return &unaryBatchExporter{t}
 }
 
+type closeStreamOnBidi bool
+
+var _ ExporterOption = (*closeStreamOnBidi)(nil)
+
+func (cs *closeStreamOnBidi) withExporter(e *Exporter) {
+	e.closeStreamOnBidi = true
+}
+func WithCloseStreamOnBidirectional() ExporterOption {
+	return new(closeStreamOnBidi)
+}
+
 type insecureGrpcConnection int
 
 var _ ExporterOption = (*insecureGrpcConnection)(nil)
