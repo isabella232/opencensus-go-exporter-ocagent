@@ -515,6 +515,7 @@ func (ae *Exporter) exportTraceServiceRequestCloseStream(batch *agenttracepb.Exp
 			return lastConnectErr
 		}
 
+		// ctx, cancelCtxFn := context.WithCancel(ae.newGRPCContext())
 		ctx := ae.newGRPCContext()
 		ae.mu.RLock()
 		traceExporter, err := ae.traceSvcClient.Export(ctx)
@@ -523,8 +524,19 @@ func (ae *Exporter) exportTraceServiceRequestCloseStream(batch *agenttracepb.Exp
 			return err
 		}
 
+		// log.Printf("<<<<<< Closing stream after send (cancelCtxFn) >>>>>")
+		// defer cancelCtxFn()
 		log.Printf("<<<<<< Closing stream after send >>>>>")
-		defer traceExporter.CloseSend()
+		defer func() {
+			traceExporter.CloseSend()
+			for {
+				_, err := traceExporter.Recv()
+				if err != nil {
+					log.Printf(">>>>> until traceExporter.Recv() err = %v", err)
+					break
+				}
+			}
+		}()
 		err = traceExporter.Send(batch)
 		if err != nil {
 			if err == io.EOF {
