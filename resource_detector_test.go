@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"go.opencensus.io/resource"
 
-	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1"
+	resourcepb "github.com/census-instrumentation/opencensus-proto/gen-gogo/resource/v1"
 )
 
 func TestResourceDetector(t *testing.T) {

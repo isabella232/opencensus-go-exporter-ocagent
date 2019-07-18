@@ -23,9 +23,9 @@ import (
 
 	"google.golang.org/grpc"
 
-	commonpb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1"
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
-	tracepb "github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1"
+	commonpb "github.com/census-instrumentation/opencensus-proto/gen-gogo/agent/common/v1"
+	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-gogo/agent/trace/v1"
+	tracepb "github.com/census-instrumentation/opencensus-proto/gen-gogo/trace/v1"
 )
 
 func makeMockAgent(t *testing.T) *mockAgent {

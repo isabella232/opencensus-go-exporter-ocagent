@@ -32,7 +32,7 @@ import (
 	"google.golang.org/grpc"
 
 	"contrib.go.opencensus.io/exporter/ocagent"
-	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1"
+	agenttracepb "github.com/census-instrumentation/opencensus-proto/gen-gogo/agent/trace/v1"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/trace"
 )

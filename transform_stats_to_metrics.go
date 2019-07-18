@@ -22,9 +22,9 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
+	timestamp "github.com/gogo/protobuf/types"
 
-	metricspb "github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1"
+	metricspb "github.com/census-instrumentation/opencensus-proto/gen-gogo/metrics/v1"
 )
 
 var (
@@ -261,7 +261,7 @@ func labelValuesFromTags(tags []tag.Tag) []*metricspb.LabelValue {
 
 			// It is imperative that we set the "HasValue" attribute,
 			// in order to distinguish missing a label from the empty string.
-			// https://godoc.org/github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1#LabelValue.HasValue
+			// https://godoc.org/github.com/census-instrumentation/opencensus-proto/gen-gogo/metrics/v1#LabelValue.HasValue
 			//
 			// OpenCensus-Go uses non-pointers for tags as seen by this function's arguments,
 			// so the best case that we can use to distinguish missing labels/tags from the
