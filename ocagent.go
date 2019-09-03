@@ -63,28 +63,28 @@ type Exporter struct {
 	// senderMu protects the concurrent unsafe send on traceExporter client
 	senderMu sync.Mutex
 	// recvMu protects the concurrent unsafe recv on traceExporter client
-	recvMu             sync.Mutex
-	started            bool
-	stopped            bool
-	agentAddress       string
-	serviceName        string
-	canDialInsecure    bool
+	recvMu                sync.Mutex
+	started               bool
+	stopped               bool
+	agentAddress          string
+	serviceName           string
+	canDialInsecure       bool
 	useUnaryBatchExporter bool
 	unaryExportTimeout    time.Duration
 	traceSvcClient        agenttracepb.TraceServiceClient // figure out if this is still needed
-	traceExporter      agenttracepb.TraceService_ExportClient
-	metricsExporter    agentmetricspb.MetricsService_ExportClient
-	nodeInfo           *commonpb.Node
-	grpcClientConn     *grpc.ClientConn
-	reconnectionPeriod time.Duration
-	resourceDetector   resource.Detector
-	resource           *resourcepb.Resource
-	compressor         string
-	headers            map[string]string
-	lastConnectErrPtr  unsafe.Pointer
-	startOnce      sync.Once
-	stopCh         chan bool
-	disconnectedCh chan bool
+	traceExporter         agenttracepb.TraceService_ExportClient
+	metricsExporter       agentmetricspb.MetricsService_ExportClient
+	nodeInfo              *commonpb.Node
+	grpcClientConn        *grpc.ClientConn
+	reconnectionPeriod    time.Duration
+	resourceDetector      resource.Detector
+	resource              *resourcepb.Resource
+	compressor            string
+	headers               map[string]string
+	lastConnectErrPtr     unsafe.Pointer
+	startOnce             sync.Once
+	stopCh                chan bool
+	disconnectedCh        chan bool
 
 	backgroundConnectionDoneCh chan bool
 
