@@ -71,7 +71,7 @@ type Exporter struct {
 	canDialInsecure       bool
 	useUnaryBatchExporter bool
 	unaryExportTimeout    time.Duration
-	traceSvcClient        agenttracepb.TraceServiceClient // figure out if this is still needed
+	traceSvcClient        agenttracepb.TraceServiceClient
 	traceExporter         agenttracepb.TraceService_ExportClient
 	metricsExporter       agentmetricspb.MetricsService_ExportClient
 	nodeInfo              *commonpb.Node
