@@ -17,6 +17,7 @@ package ocagent
 import (
 	"time"
 
+	"go.opencensus.io/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -30,6 +31,22 @@ var DefaultUnaryExportTimeout time.Duration = 5 * time.Second
 
 type ExporterOption interface {
 	withExporter(e *Exporter)
+}
+
+type resourceDetector resource.Detector
+
+var _ ExporterOption = (*resourceDetector)(nil)
+
+func (rd resourceDetector) withExporter(e *Exporter) {
+	e.resourceDetector = resource.Detector(rd)
+}
+
+// WithResourceDetector allows one to register a resource detector. Resource Detector is used
+// to detect resources associated with the application. Detected resource is exported
+// along with the metrics. If the detector fails then it panics.
+// If a resource detector is not provided then by default it detects from the environment.
+func WithResourceDetector(rd resource.Detector) ExporterOption {
+	return resourceDetector(rd)
 }
 
 type UnaryExporterParams struct {
